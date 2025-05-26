@@ -1,0 +1,137 @@
+AWS – Windows Server 2016 Tartományvezérlő telepítési jegyzet
+-------------------------------------------------------------
+
+1. Virtuális gép létrehozása az AWS-ben
+----------------------------------------
+- AWS Console > EC2 > Instances > Launch Instance
+- Amazon Machine Image (AMI): Windows Server 2016 Base
+- Instance neve: dc01
+- Méret: t2.medium (vagy jobb)
+- Hálózat: válaszd ki a meglévő VPC-t vagy hozz létre újat
+- Storage: min. 30 GB (IIS + AD + DHCP miatt)
+- Key pair: hozz létre újat vagy válaszd a meglévőt
+
+2. Publikus statikus IP hozzárendelése
+---------------------------------------
+- EC2 > Elastic IPs > Allocate Elastic IP
+- Actions > Associate Elastic IP
+  - Instance: dc01
+  - Network interface: eth0
+
+📷 Képernyőmentés a hozzárendelésről
+
+3. Biztonsági csoport beállítás
+-------------------------------
+- EC2 > Security Groups > dc01-hez tartozó csoport
+- Edit inbound rules > Add rule:
+  - Type: All traffic
+  - Protocol: All
+  - Port Range: All
+  - Source: 0.0.0.0/0 (bármilyen külső IP)
+
+📷 Képernyőmentés a szabályról
+
+4. Bejelentkezés a szerverre
+----------------------------
+- EC2 > Instances > dc01 > Connect > RDP (távoli asztal)
+- Admin jelszó dekódolása a key pair segítségével
+- RDP kapcsolódás: IP + jelszó
+
+5. Active Directory telepítése
+------------------------------
+- Server Manager > Add roles and features
+- Válaszd: Active Directory Domain Services (AD DS)
+- DNS Server automatikusan hozzáadódik
+
+- Telepítés után: Promote this server to a domain controller
+  - Új erdő neve: dc-ab.local
+  - Jelszó: DSRM jelszó megadása
+  - Újraindítás
+
+6. Szervezeti egység és csoportok létrehozása
+----------------------------------------------
+- Active Directory Users and Computers (dsa.msc)
+- OU: Fejlesztők
+- Fejlesztők alatt:
+  - Globális csoport: Java
+  - Univerzális csoport: Python
+
+7. Felhasználók létrehozása (Java csoportban)
+---------------------------------------------
+- junior, senior felhasználó, jelszó: Vizsga2025
+- Belépési idő korlátozás:
+  - junior: csak hétvégén 10:00–12:00
+  - senior: csak hétköznap 8:00–12:00
+
+- GPO (Group Policy Management):
+  - Default Domain Policy módosítása:
+    - Minimum password length: 9
+    - Account lockout threshold: 5 próbálkozás
+
+- Megosztott mappa: C:\Development
+  - Users\%username% > saját almappák
+  - Profile beállítás: Z: meghajtó hozzárendelése:
+    \\dc01\Development\%username%
+
+- Új megosztás: "Developers"
+  - Teljes hozzáférés: Everyone
+
+📷 Képernyőmentés a megosztásról
+
+8. DHCP szerver telepítése
+---------------------------
+- Server Manager > Add Roles and Features
+- Válaszd: DHCP Server
+- Telepítés után konfigurálás: DHCP console
+
+Hatókör beállítás:
+- Scope name: iroda
+- Hálózat: 10.20.20.0
+- Maszk: 255.255.255.0
+- Start IP: 10.20.20.51
+- End IP: 10.20.20.204
+- Reservation: 10.20.20.100 → bármilyen MAC-re
+
+📷 Képernyőmentés a DHCP konfigurációról
+
+9. IIS és FTP telepítése
+-------------------------
+- Server Manager > Add roles and features
+- Válaszd: Web Server (IIS) + FTP Server
+
+Könyvtárszerkezet:
+- C:\inetpub\wwwroot\
+  - Windows\
+    - DEV\
+      - Java\
+
+HTML fájl létrehozása (pl. index.html):
+
+---------------------------------------------------
+<!DOCTYPE html>
+<html>
+<head>
+<title>Fejlesztés alatt</title>
+<style>
+  body {
+    background-color: lightblue;
+    text-align: center;
+    font-size: 24px;
+  }
+</style>
+</head>
+<body>
+<h1>Fejlesztés alatt! – Saját Név – Windows 2016</h1>
+<p>Dátum: 2025.05.26</p>
+<p><a href="https://www.mek.hu">www.mek.hu</a></p>
+</body>
+</html>
+---------------------------------------------------
+
+Fájl elérési út: C:\inetpub\wwwroot\Windows\DEV\Java\index.html
+
+📷 Képernyőmentés a böngészős megjelenítésről
+
+---
+
+VÉGE
