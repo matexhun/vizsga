@@ -1,0 +1,106 @@
+---------------------PRIVILEGIZÁLT EXEC MÓD HOZZÁFÉRÉS---------------------
+
+enable secret Cisco123
+
+---------------------KONZOLI HOZZÁFÉRÉS---------------------
+
+line console 0
+ password cisco
+ login
+
+---------------------SSH konfiguráció (biztonságos távoli elérés)---------------------
+
+hostname R1
+ip domain-name example.com
+crypto key generate rsa
+1024
+username admin secret Cisco123
+line vty 0 4
+ transport input ssh
+ login local
+
+---------------------DHCP konfiguráció (IP-címek automatikus kiosztása)---------------------
+
+ip dhcp excluded-address 192.168.1.1 192.168.1.10
+ip dhcp pool LAN
+ network 192.168.1.0 255.255.255.0
+ default-router 192.168.1.1
+ dns-server 8.8.8.8
+
+---------------------RIP konfiguráció (egyszerű routing protokoll kisebb hálózatokhoz)---------------------
+
+router rip
+ version 2
+ network 192.168.1.0
+ network 10.0.0.0
+
+---------------------OSPF konfiguráció (fejlettebb routing protokoll nagyobb hálózatokhoz)---------------------
+
+router ospf 1
+ network 192.168.1.0 0.0.0.255 area 0
+
+---------------------EIGRP konfiguráció (Cisco által fejlesztett fejlett routing protokoll)---------------------
+
+router eigrp 100
+ network 192.168.1.0
+ network 10.0.0.0
+
+---------------------Redisztribúció OSPF és EIGRP között (útvonalak megosztása)---------------------
+
+router ospf 1
+ redistribute eigrp 100 subnets
+
+router eigrp 100
+ redistribute ospf 1 metric 10000 100 255 1 1500
+
+---------------------Redisztribúció RIP és EIGRP között---------------------
+
+router eigrp 25
+ redistribute rip metric 200 150 100 100 1500
+
+router rip
+ redistribute eigrp 25 metric 2
+
+---------------------NAT konfiguráció---------------------
+
+---------------------Statikus NAT--------------------- (egy belső IP cím leképezése egy külsőre)
+ip nat inside source static 192.168.1.10 203.0.113.10
+
+---------------------Dinamikus NAT--------------------- (több belső IP cím leképezése egy címkészletre)
+ip access-list standard NAT_LIST
+ permit 192.168.1.0 0.0.0.255
+ip nat pool NAT_POOL 203.0.113.100 203.0.113.110 netmask 255.255.255.0
+ip nat inside source list NAT_LIST pool NAT_POOL
+
+---------------------NAT interfész beállítások---------------------
+
+interface GigabitEthernet0/0
+ ip address 192.168.1.1 255.255.255.0
+ ip nat inside
+
+interface GigabitEthernet0/1
+ ip address 203.0.113.1 255.255.255.0
+ ip nat outside
+
+---------------------VLAN konfiguráció (példa több VLAN létrehozására)---------------------
+
+vlan 10
+ name HR
+vlan 20
+ name IT
+vlan 30
+ name Management
+
+interface range FastEthernet0/1 - 5
+ switchport mode access
+ switchport access vlan 10
+
+interface range FastEthernet0/6 - 10
+ switchport mode access
+ switchport access vlan 20
+
+---------------------VTP konfiguráció (VLAN adatbázis terjesztése switchek között)---------------------
+
+vtp mode server
+vtp domain CISCO
+vtp password vlanpass
