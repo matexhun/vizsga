@@ -1,0 +1,109 @@
+Windows Server 2016 – Tartományvezérlő beállítás jegyzet
+--------------------------------------------------------
+
+1. Virtuális gép létrehozása (pl. VirtualBox / VMware)
+-------------------------------------------------------
+- Név: DC007
+- Operációs rendszer: Windows Server 2016 (64-bit)
+- Memória: legalább 2048 MB
+- HDD: 25 GB, dinamikusan növekvő
+- Telepítő: Windows Server 2016 ISO
+
+2. Windows Server 2016 telepítése
+----------------------------------
+- Nyelv: Magyar
+- Név: VIZSGA
+- Szervezet: ZKMSZ
+- Számítógép neve: DC007
+- Rendszergazda jelszó: Vizsga2025
+- Munkacsoport neve: Zipernowsky
+
+Hálózati beállítások (TCP/IP):
+IP: 192.168.20.200
+Maszk: 255.255.255.0
+Átjáró: 192.168.20.254
+DNS: 192.168.20.200
+
+3. Bejelentkezés rendszergazdaként
+----------------------------------
+- Felhasználó: Administrator
+- Jelszó: Vizsga2025
+
+4. Active Directory és DNS szolgáltatás telepítése
+---------------------------------------------------
+
+Server Manager > Manage > Add Roles and Features:
+- Telepítés típusa: Role-based
+- Válassz AD DS (Active Directory Domain Services)
+- A DNS Server szerepkört is jelöld be
+- Telepítés után kattints: "Promote this server to a domain controller"
+
+AD DS konfigurálása:
+- Új erdő létrehozása: cegem.local
+- DSRM jelszó megadása
+
+Újraindítás után: tartományvezérlőként üzemel a gép (DC007.cegem.local)
+
+5. OU, csoportok, felhasználók létrehozása
+------------------------------------------
+
+Active Directory Users and Computers (dsa.msc):
+- Jobb klikk a cegem.local tartományon > Új > Szervezeti egység: Matematika
+- Matematika alatt hozz létre két csoportot:
+  1. Új > Csoport > Név: IT, Típus: Globális
+  2. Új > Csoport > Név: HR, Típus: Univerzális
+
+Felhasználók létrehozása (Matematika/IT):
+-----------------------------------------
+1. IT01 felhasználó:
+   - Jelszó: Vizsga2025
+   - Belépési idő korlátozása: csak H-P 8:00-12:00
+
+2. IT02 felhasználó:
+   - Jelszó: Vizsga2025
+   - Belépési idő korlátozása: csak H-P 12:00-16:00
+
+Mindkettőt hozzá kell adni az "IT" csoporthoz.
+
+Jelszabályok:
+- Csoportházirend szerkesztő (gpmc.msc)
+- Default Domain Policy > Password Policy:
+   - Minimum jelszóhossz: 10 karakter
+   - Account Lockout Policy: 5 próbálkozás után zárolás
+
+6. Felhasználók saját munkakönyvtára (Z:\)
+------------------------------------------
+- Hozz létre egy mappát: pl. C:\Megosztas\IT
+- Megosztás: jobb klikk > Sharing > Advanced Sharing
+  - Share name: IT
+  - Jogosultság: "Everyone" - csak olvasás, "Authenticated Users" - teljes
+
+- Felhasználók profilbeállításánál (AD-ben):
+  - Profile fülön:
+    - Home folder: Connect Z: to \\DC007\IT\%username%
+
+7. DNS konfiguráció
+-------------------
+- DNS Manager (dnsmgmt.msc)
+- cegem.local zóna > Új Host (A) rekord:
+   Név: debian
+   IP: 192.168.20.100 (vagy a valódi Debian szerver IP-je)
+- Jogosultság: csak olvasás, admin jogosultság a DC-n
+
+8. Kliens gép (Windows 7) telepítése és tartományba léptetése
+-------------------------------------------------------------
+- Telepítés: normál Windows 7 telepítés
+- IP beállítása pl. DHCP-vel vagy kézzel
+- DNS: 192.168.20.200 (a DC címe!)
+- Tartományhoz csatlakozás: cegem.local
+
+Belépés tesztelése:
+- IT01 vagy IT02 fiókkal próbáld ki
+- Időkorlát miatt csak megadott napszakban fog működni!
+
+Megosztás tesztelése:
+- Start > Futtatás > \\debian
+- Lásd a megosztást
+
+Csoportházirend érvényesülésének ellenőrzése:
+- cmd: gpresult /r

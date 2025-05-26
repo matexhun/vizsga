@@ -1,0 +1,97 @@
+Debian Linux szerver telepítési és beállítási jegyzet
+------------------------------------------------------
+
+1. Virtuális gép létrehozása (pl. VirtualBox)
+- Név: Linuxsrv
+- Rendszer: Debian (64-bit)
+- RAM: 1024 MB
+- HDD: 10 GB (dinamikus)
+- ISO: Debian telepítő
+
+2. Debian telepítése (telepítőben)
+- Nyelv: Magyar
+- Root jelszó: Vizsga2025
+- Felhasználó: vizsga, jelszó: Vizsga2025
+- Hostname: linuxsrv
+- Domain: cegem.local
+
+3. Bejelentkezés root felhasználóval
+su -
+
+4. DNS beállítás
+nano /etc/resolv.conf
+
+Tartalom:
+nameserver 8.8.8.8
+nameserver 4.4.4.4
+
+5. DHCP szerver telepítése és beállítása
+----------------------------------------
+
+apt update
+apt install isc-dhcp-server -y
+
+nano /etc/dhcp/dhcpd.conf
+
+Tartalom:
+authoritative;
+default-lease-time 80;
+max-lease-time 800;
+option domain-name "ceg.local";
+option domain-name-servers 8.8.8.8, 4.4.4.4;
+option routers 192.168.20.254;
+subnet 192.168.20.0 netmask 255.255.255.0 {
+  range 192.168.20.100 192.168.20.149;
+}
+
+nano /etc/default/isc-dhcp-server
+INTERFACESv4="eth0"   # vagy az aktuális interfész
+
+systemctl restart isc-dhcp-server
+
+6. Tűzfal beállítása iptables-szel
+----------------------------------
+
+apt install iptables -y
+
+# Ping tiltása localhost-ra
+iptables -A INPUT -p icmp --icmp-type echo-request -d 127.0.0.1 -j DROP
+
+# SSH engedélyezés (port 22)
+iptables -A INPUT -p tcp --dport 22 -j ACCEPT
+
+# Webszerver engedélyezés (port 80)
+iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+
+# DNS engedélyezés (port 53 TCP/UDP)
+iptables -A INPUT -p tcp --dport 53 -j ACCEPT
+iptables -A INPUT -p udp --dport 53 -j ACCEPT
+
+# Szabályok mentése
+apt install iptables-persistent -y
+netfilter-persistent save
+
+7. Samba megosztás létrehozása
+------------------------------
+
+apt install samba -y
+
+mkdir /srv/megosztas
+chmod 777 /srv/megosztas
+
+nano /etc/samba/smb.conf
+
+Fájl végére:
+[megosztas]
+   path = /srv/megosztas
+   browseable = yes
+   read only = no
+   guest ok = yes
+
+systemctl restart smbd
+
+----------------------------------------------
+Képernyőmentéshez parancs:
+apt install gnome-screenshot -y
+gnome-screenshot
+----------------------------------------------
